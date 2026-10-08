@@ -159,18 +159,20 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
         create_unified.assert_called_once_with(ctx)
         self.assertIs(result, create_unified.return_value)
 
-    def test_swa_chunk_cache_when_chunked_prefill_disable_and_hybrid_swa(self):
+    def test_hybrid_swa_with_disable_radix_routes_to_unified(self):
         ctx = _make_ctx(
             self,
             effective_chunked_prefill_size=512,
             disable_radix_cache=True,
             is_hybrid_swa=True,
+            full_tokens_per_layer=128,
         )
-        with patch("sglang.srt.mem_cache.chunk_cache.SWAChunkCache") as SWAChunkCache:
-            SWAChunkCache.return_value = MagicMock()
+        with patch(
+            "sglang.srt.mem_cache.registry.create_unified_radix_cache"
+        ) as create_unified:
             result = default_radix_cache_factory(ctx)
-            SWAChunkCache.assert_called_once_with(ctx.params)
-            self.assertIs(result, SWAChunkCache.return_value)
+        create_unified.assert_called_once_with(ctx)
+        self.assertIs(result, create_unified.return_value)
 
     def test_pure_swa_radix_cache_when_chunked_prefill_disable_and_all_swa(self):
         ctx = _make_ctx(
@@ -187,44 +189,6 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
             result = default_radix_cache_factory(ctx)
             PureSWARadixCache.assert_called_once_with(params=ctx.params)
             self.assertIs(result, PureSWARadixCache.return_value)
-
-    def test_streaming_with_disable_radix_keeps_pure_swa_off_unified(self):
-        ctx = _make_ctx(
-            self,
-            effective_chunked_prefill_size=512,
-            disable_radix_cache=True,
-            enable_streaming=True,
-            is_hybrid_swa=True,
-            full_tokens_per_layer=0,
-        )
-        with (
-            patch(
-                "sglang.srt.mem_cache.registry.create_unified_radix_cache"
-            ) as create_unified,
-            patch(
-                "sglang.srt.mem_cache.pure_swa_radix_cache.PureSWARadixCache"
-            ) as PureSWARadixCache,
-        ):
-            result = default_radix_cache_factory(ctx)
-        create_unified.assert_not_called()
-        self.assertIs(result, PureSWARadixCache.return_value)
-
-    def test_mamba_with_disable_radix_routes_to_unified(self):
-        # Hybrid SWA, so the mamba clause (not the full-attention one) routes it.
-        ctx = _make_ctx(
-            self,
-            effective_chunked_prefill_size=512,
-            disable_radix_cache=True,
-            is_hybrid_ssm=True,
-            is_hybrid_swa=True,
-            full_tokens_per_layer=128,
-        )
-        with patch(
-            "sglang.srt.mem_cache.registry.create_unified_radix_cache"
-        ) as create_unified:
-            result = default_radix_cache_factory(ctx)
-        create_unified.assert_called_once_with(ctx)
-        self.assertIs(result, create_unified.return_value)
 
     def test_mamba_rejected_on_cache_without_mamba(self):
         inner = MagicMock()

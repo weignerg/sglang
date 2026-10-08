@@ -82,15 +82,10 @@ def default_radix_cache_factory(ctx: TreeCacheBuildContext) -> BasePrefixCache:
     params = ctx.params
 
     is_pure_swa = ctx.is_hybrid_swa and ctx.full_tokens_per_layer == 0
+    # UnifiedRadixCache's disabled mode serves every layout but pure-SWA.
     if ctx.disable_radix_cache and (
         get_disagg().disaggregation_decode_retraction_backup == "host_pool"
-        # UnifiedRadixCache's disabled mode serves full-attention layouts,
-        # streaming sessions, and mamba states; pure-SWA has no unified layout.
-        or not ctx.is_hybrid_swa
-        or (
-            not is_pure_swa
-            and (get_serving().enable_streaming_session or ctx.is_hybrid_ssm)
-        )
+        or not is_pure_swa
     ):
         return create_unified_radix_cache(ctx)
 
@@ -99,9 +94,6 @@ def default_radix_cache_factory(ctx: TreeCacheBuildContext) -> BasePrefixCache:
             from sglang.srt.mem_cache.pure_swa_radix_cache import PureSWARadixCache
 
             return PureSWARadixCache(params=params)
-        from sglang.srt.mem_cache.chunk_cache import SWAChunkCache
-
-        return SWAChunkCache(params)
 
     if get_memory().enable_lmcache:
         from sglang.srt.mem_cache.storage.lmcache.lmcache_unified_radix_cache import (
