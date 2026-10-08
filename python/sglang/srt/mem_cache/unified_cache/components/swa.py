@@ -74,12 +74,13 @@ class SWAComponent(TreeComponent):
         )
         from sglang.srt.mem_cache.allocator.swa import SWATokenToKVPoolAllocator
 
-        # DeepSeek V4 HiSparse wraps SWATokenToKVPoolAllocator and exposes the same API.
+        # DeepSeek V4 HiSparse requires --disable-radix-cache; the disabled mode
+        # only uses the SWA allocator API it forwards.
         assert isinstance(
             params.token_to_kv_pool_allocator,
             (SWATokenToKVPoolAllocator, DeepSeekV4HiSparseTokenToKVPoolAllocator),
         ), (
-            f"SWAComponent requires SWATokenToKVPoolAllocator, got {type(params.token_to_kv_pool_allocator)}"
+            f"SWAComponent requires an SWA allocator, got {type(params.token_to_kv_pool_allocator)}"
         )
         if params.sliding_window_size is None or params.sliding_window_size <= 0:
             raise ValueError("SWAComponent requires a positive sliding_window_size")
