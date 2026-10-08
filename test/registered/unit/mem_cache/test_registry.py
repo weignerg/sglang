@@ -148,15 +148,16 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
                 _make_ctx(self, backend="nonstreaming", enable_streaming=True)
             )
 
-    def test_chunk_cache_when_chunked_prefill_and_disable_radix(self):
+    def test_full_attention_with_disable_radix_routes_to_unified(self):
         ctx = _make_ctx(
             self, effective_chunked_prefill_size=512, disable_radix_cache=True
         )
-        with patch("sglang.srt.mem_cache.chunk_cache.ChunkCache") as ChunkCache:
-            ChunkCache.return_value = MagicMock()
+        with patch(
+            "sglang.srt.mem_cache.registry.create_unified_radix_cache"
+        ) as create_unified:
             result = default_radix_cache_factory(ctx)
-            ChunkCache.assert_called_once_with(ctx.params)
-            self.assertIs(result, ChunkCache.return_value)
+        create_unified.assert_called_once_with(ctx)
+        self.assertIs(result, create_unified.return_value)
 
     def test_swa_chunk_cache_when_chunked_prefill_disable_and_hybrid_swa(self):
         ctx = _make_ctx(
