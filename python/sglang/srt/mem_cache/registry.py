@@ -82,8 +82,9 @@ def default_radix_cache_factory(ctx: TreeCacheBuildContext) -> BasePrefixCache:
     params = ctx.params
 
     is_pure_swa = ctx.is_hybrid_swa and ctx.full_tokens_per_layer == 0
-    # A disabled cache publishes nothing, so no storage backend applies. The
-    # decode host-pool backup needs UnifiedRadixCache even for pure-SWA.
+    # A disabled cache publishes nothing, so no storage backend applies.
+    # Host-pool retraction goes to UnifiedRadixCache, which validates it (and
+    # rejects pure-SWA).
     if ctx.disable_radix_cache:
         if (
             is_pure_swa

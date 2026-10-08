@@ -186,7 +186,6 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
         self.assertEqual(component.full_window_pages, 2)
 
     def test_pure_swa_with_disable_radix_skips_storage_backends(self):
-        # Disabled pure-SWA returns before the lmcache arm.
         ctx = _make_ctx(
             self,
             enable_lmcache=True,

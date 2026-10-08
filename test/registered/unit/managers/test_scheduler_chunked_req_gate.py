@@ -5,8 +5,6 @@ from array import array
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import torch
-
 from sglang.test.ci.ci_register import register_cpu_ci
 from sglang.test.test_utils import CustomTestCase, maybe_stub_sgl_kernel
 
@@ -52,21 +50,9 @@ def _make_req(
     return req
 
 
-def _make_req_to_token_pool(num_slots: int, max_context: int) -> SimpleNamespace:
-    pool = SimpleNamespace()
-    pool.req_to_token = (
-        torch.arange(max_context, dtype=torch.int32).unsqueeze(0).repeat(num_slots, 1)
-        + torch.arange(num_slots, dtype=torch.int32).unsqueeze(1) * 1000
-    )
-    return pool
-
-
-def _make_tree_cache(req_to_token_pool) -> BasePrefixCache:
-    # A radix-disabled cache publishes nothing on checkpoint; the gate under
-    # test lives in the scheduler, so a stub stands in for it.
-    cache = MagicMock(spec=BasePrefixCache)
-    cache.req_to_token_pool = req_to_token_pool
-    return cache
+def _make_tree_cache() -> BasePrefixCache:
+    # The gate under test lives in the scheduler; the cache is a stub.
+    return MagicMock(spec=BasePrefixCache)
 
 
 def _scheduler_for_get_next_batch(*, tree_cache, chunked_req) -> Scheduler:
@@ -118,12 +104,9 @@ class TestStashGatePreservesPrefix(CustomTestCase):
     POOL_IDX = 4
     INITIAL_PREFIX_LEN = 8  # what was really cached last iter
     POST_RESET_FILL_LEN = 32  # length after init_next_round_input rebuilds
-    NUM_SLOTS = 8
-    MAX_CONTEXT = 64
 
     def _build(self, *, fill_len: int):
-        pool = _make_req_to_token_pool(self.NUM_SLOTS, self.MAX_CONTEXT)
-        cache = _make_tree_cache(pool)
+        cache = _make_tree_cache()
         req = _make_req(
             req_pool_idx=self.POOL_IDX,
             fill_ids=list(range(self.POST_RESET_FILL_LEN)),
@@ -131,12 +114,12 @@ class TestStashGatePreservesPrefix(CustomTestCase):
             fill_len=fill_len,
         )
         s = _scheduler_for_get_next_batch(tree_cache=cache, chunked_req=req)
-        return s, req, pool
+        return s, req
 
     def test_parked_chunked_req_keeps_its_prefix(self):
         # A parked chunk has fill_len == prefix_len: no new KV was computed,
         # so the gate must skip stash and leave the prefix intact.
-        s, req, _ = self._build(fill_len=self.INITIAL_PREFIX_LEN)
+        s, req = self._build(fill_len=self.INITIAL_PREFIX_LEN)
 
         Scheduler.get_next_batch_to_run(
             s, running_batch=s.running_batch, last_batch=s.last_batch
@@ -148,7 +131,7 @@ class TestStashGatePreservesPrefix(CustomTestCase):
     def test_scheduled_chunked_req_advances_prefix_via_real_stash(self):
         # Symmetric guard against over-gating: when fill_len has advanced past
         # the cached prefix, stash must run and advance prefix_len.
-        s, req, _ = self._build(fill_len=self.POST_RESET_FILL_LEN)
+        s, req = self._build(fill_len=self.POST_RESET_FILL_LEN)
 
         Scheduler.get_next_batch_to_run(
             s, running_batch=s.running_batch, last_batch=s.last_batch
@@ -162,8 +145,7 @@ class TestStashGatePreservesPrefix(CustomTestCase):
     def test_no_chunked_req_never_mutates_state(self):
         # The outer `if chunked_req is not None` guard must hold on the retract
         # path that clears chunked_req.
-        pool = _make_req_to_token_pool(self.NUM_SLOTS, self.MAX_CONTEXT)
-        cache = _make_tree_cache(pool)
+        cache = _make_tree_cache()
         s = _scheduler_for_get_next_batch(tree_cache=cache, chunked_req=None)
 
         Scheduler.get_next_batch_to_run(
