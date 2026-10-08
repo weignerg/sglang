@@ -90,11 +90,11 @@ def default_radix_cache_factory(ctx: TreeCacheBuildContext) -> BasePrefixCache:
     ):
         return create_unified_radix_cache(ctx)
 
-    if ctx.effective_chunked_prefill_size is not None and ctx.disable_radix_cache:
-        if ctx.full_tokens_per_layer == 0:
-            from sglang.srt.mem_cache.pure_swa_radix_cache import PureSWARadixCache
+    # Only pure-SWA is left here disabled; it skips the storage backends below.
+    if ctx.disable_radix_cache:
+        from sglang.srt.mem_cache.pure_swa_radix_cache import PureSWARadixCache
 
-            return PureSWARadixCache(params=params)
+        return PureSWARadixCache(params=params)
 
     if get_memory().enable_lmcache:
         from sglang.srt.mem_cache.storage.lmcache.lmcache_unified_radix_cache import (

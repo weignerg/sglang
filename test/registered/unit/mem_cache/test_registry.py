@@ -43,7 +43,6 @@ def _make_ctx(
     is_dsa=False,
     enable_hierarchical_cache=False,
     disable_radix_cache=False,
-    effective_chunked_prefill_size=None,
     full_tokens_per_layer=None,
 ):
     # The factory reads the published bags for the cache-backend leaves, so the
@@ -65,7 +64,7 @@ def _make_ctx(
         is_dsa=is_dsa,
         enable_hierarchical_cache=enable_hierarchical_cache,
         disable_radix_cache=disable_radix_cache,
-        effective_chunked_prefill_size=effective_chunked_prefill_size,
+        effective_chunked_prefill_size=None,
         tp_worker=MagicMock(),
         model_config=MagicMock(),
         tp_size=1,
@@ -149,9 +148,7 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
             )
 
     def test_full_attention_with_disable_radix_routes_to_unified(self):
-        ctx = _make_ctx(
-            self, effective_chunked_prefill_size=512, disable_radix_cache=True
-        )
+        ctx = _make_ctx(self, disable_radix_cache=True)
         with patch(
             "sglang.srt.mem_cache.registry.create_unified_radix_cache"
         ) as create_unified:
@@ -162,7 +159,6 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
     def test_hybrid_swa_with_disable_radix_routes_to_unified(self):
         ctx = _make_ctx(
             self,
-            effective_chunked_prefill_size=512,
             disable_radix_cache=True,
             is_hybrid_swa=True,
             full_tokens_per_layer=128,
@@ -189,10 +185,11 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
         component = SWAComponent(MagicMock(), params)
         self.assertEqual(component.full_window_pages, 2)
 
-    def test_pure_swa_radix_cache_when_chunked_prefill_disable_and_all_swa(self):
+    def test_pure_swa_with_disable_radix_skips_storage_backends(self):
+        # Disabled pure-SWA returns before the lmcache arm.
         ctx = _make_ctx(
             self,
-            effective_chunked_prefill_size=512,
+            enable_lmcache=True,
             disable_radix_cache=True,
             is_hybrid_swa=True,
             full_tokens_per_layer=0,

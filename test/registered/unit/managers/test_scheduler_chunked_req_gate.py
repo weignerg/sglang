@@ -15,7 +15,7 @@ maybe_stub_sgl_kernel()
 from sglang.srt.disaggregation.utils import DisaggregationMode
 from sglang.srt.managers.schedule_batch import NextBatchPlan, Req, ReqKvInfo
 from sglang.srt.managers.scheduler import Scheduler
-from sglang.srt.mem_cache.chunk_cache import ChunkCache
+from sglang.srt.mem_cache.base_prefix_cache import BasePrefixCache
 
 register_cpu_ci(est_time=11, suite="base-a-test-cpu")
 
@@ -61,14 +61,12 @@ def _make_req_to_token_pool(num_slots: int, max_context: int) -> SimpleNamespace
     return pool
 
 
-def _make_chunk_cache(req_to_token_pool) -> ChunkCache:
-    return ChunkCache(
-        SimpleNamespace(
-            req_to_token_pool=req_to_token_pool,
-            token_to_kv_pool_allocator=None,
-            page_size=1,
-        )
-    )
+def _make_tree_cache(req_to_token_pool) -> BasePrefixCache:
+    # A radix-disabled cache publishes nothing on checkpoint; the gate under
+    # test lives in the scheduler, so a stub stands in for it.
+    cache = MagicMock(spec=BasePrefixCache)
+    cache.req_to_token_pool = req_to_token_pool
+    return cache
 
 
 def _scheduler_for_get_next_batch(*, tree_cache, chunked_req) -> Scheduler:
@@ -125,7 +123,7 @@ class TestStashGatePreservesPrefix(CustomTestCase):
 
     def _build(self, *, fill_len: int):
         pool = _make_req_to_token_pool(self.NUM_SLOTS, self.MAX_CONTEXT)
-        cache = _make_chunk_cache(pool)
+        cache = _make_tree_cache(pool)
         req = _make_req(
             req_pool_idx=self.POOL_IDX,
             fill_ids=list(range(self.POST_RESET_FILL_LEN)),
@@ -145,6 +143,7 @@ class TestStashGatePreservesPrefix(CustomTestCase):
         )
 
         self.assertEqual(req.prefix_len, self.INITIAL_PREFIX_LEN)
+        s.tree_cache.checkpoint.assert_not_called()
 
     def test_scheduled_chunked_req_advances_prefix_via_real_stash(self):
         # Symmetric guard against over-gating: when fill_len has advanced past
@@ -156,12 +155,15 @@ class TestStashGatePreservesPrefix(CustomTestCase):
         )
 
         self.assertEqual(req.prefix_len, self.POST_RESET_FILL_LEN)
+        s.tree_cache.checkpoint.assert_called_once_with(
+            req, up_to=self.POST_RESET_FILL_LEN
+        )
 
     def test_no_chunked_req_never_mutates_state(self):
         # The outer `if chunked_req is not None` guard must hold on the retract
         # path that clears chunked_req.
         pool = _make_req_to_token_pool(self.NUM_SLOTS, self.MAX_CONTEXT)
-        cache = _make_chunk_cache(pool)
+        cache = _make_tree_cache(pool)
         s = _scheduler_for_get_next_batch(tree_cache=cache, chunked_req=None)
 
         Scheduler.get_next_batch_to_run(
