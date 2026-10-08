@@ -64,7 +64,6 @@ def _make_ctx(
         is_dsa=is_dsa,
         enable_hierarchical_cache=enable_hierarchical_cache,
         disable_radix_cache=disable_radix_cache,
-        effective_chunked_prefill_size=None,
         tp_worker=MagicMock(),
         model_config=MagicMock(),
         tp_size=1,

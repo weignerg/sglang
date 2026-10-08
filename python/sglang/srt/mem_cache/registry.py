@@ -37,7 +37,6 @@ class TreeCacheBuildContext:
     is_hybrid_ssm: bool
     enable_hierarchical_cache: bool
     disable_radix_cache: bool
-    effective_chunked_prefill_size: Optional[int]
     tp_worker: Any
     model_config: ModelConfig
     tp_size: int
