@@ -205,6 +205,41 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
             PureSWARadixCache.assert_called_once_with(params=ctx.params)
             self.assertIs(result, PureSWARadixCache.return_value)
 
+    def test_pure_swa_with_disable_radix_skips_storage_backends(self):
+        ctx = _make_ctx(
+            self, disable_radix_cache=True, is_hybrid_swa=True, full_tokens_per_layer=0
+        )
+        enter_override(
+            self,
+            get_context().override_server_args(
+                enable_unified_cache_external_linker=True
+            ),
+        )
+        with patch(
+            "sglang.srt.mem_cache.pure_swa_radix_cache.PureSWARadixCache"
+        ) as PureSWARadixCache:
+            PureSWARadixCache.return_value = MagicMock()
+            result = default_radix_cache_factory(ctx)
+            PureSWARadixCache.assert_called_once_with(params=ctx.params)
+            self.assertIs(result, PureSWARadixCache.return_value)
+
+    def test_pure_swa_with_disable_radix_and_host_pool_goes_to_unified(self):
+        ctx = _make_ctx(
+            self, disable_radix_cache=True, is_hybrid_swa=True, full_tokens_per_layer=0
+        )
+        enter_override(
+            self,
+            get_context().override_server_args(
+                disaggregation_decode_retraction_backup="host_pool"
+            ),
+        )
+        with patch(
+            "sglang.srt.mem_cache.registry.create_unified_radix_cache"
+        ) as create_unified:
+            result = default_radix_cache_factory(ctx)
+            create_unified.assert_called_once_with(ctx)
+            self.assertIs(result, create_unified.return_value)
+
     def test_mamba_rejected_on_cache_without_mamba(self):
         inner = MagicMock()
         inner.supports_mamba.return_value = False
