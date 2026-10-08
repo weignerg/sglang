@@ -210,11 +210,14 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
         self.assertIs(result, PureSWARadixCache.return_value)
 
     def test_mamba_with_disable_radix_routes_to_unified(self):
+        # Hybrid SWA, so the mamba clause (not the full-attention one) routes it.
         ctx = _make_ctx(
             self,
             effective_chunked_prefill_size=512,
             disable_radix_cache=True,
             is_hybrid_ssm=True,
+            is_hybrid_swa=True,
+            full_tokens_per_layer=128,
         )
         with patch(
             "sglang.srt.mem_cache.registry.create_unified_radix_cache"
