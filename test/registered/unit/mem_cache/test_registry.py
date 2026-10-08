@@ -174,6 +174,21 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
         create_unified.assert_called_once_with(ctx)
         self.assertIs(result, create_unified.return_value)
 
+    def test_swa_component_accepts_hisparse_allocator(self):
+        # Disabled DeepSeek V4 HiSparse routes to UnifiedRadixCache, whose SWA
+        # component must accept the HiSparse allocator.
+        from sglang.srt.mem_cache.allocator.hisparse import (
+            DeepSeekV4HiSparseTokenToKVPoolAllocator,
+        )
+        from sglang.srt.mem_cache.unified_cache.components.swa import SWAComponent
+
+        params = MagicMock(sliding_window_size=128, page_size=64)
+        params.token_to_kv_pool_allocator = MagicMock(
+            spec=DeepSeekV4HiSparseTokenToKVPoolAllocator
+        )
+        component = SWAComponent(MagicMock(), params)
+        self.assertEqual(component.full_window_pages, 2)
+
     def test_pure_swa_radix_cache_when_chunked_prefill_disable_and_all_swa(self):
         ctx = _make_ctx(
             self,
