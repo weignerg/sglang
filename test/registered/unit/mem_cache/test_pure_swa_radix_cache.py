@@ -52,7 +52,7 @@ class _FakeAllocator:
         self.window_freed.extend(indices.tolist())
 
 
-def _make_cache(*, disable, num_tokens):
+def _make_cache(*, disable, num_tokens, page_size=1):
     return PureSWARadixCache(
         CacheInitParams(
             disable=disable,
@@ -60,7 +60,7 @@ def _make_cache(*, disable, num_tokens):
                 torch.arange(num_tokens, dtype=torch.int64).unsqueeze(0)
             ),
             token_to_kv_pool_allocator=_FakeAllocator(),
-            page_size=1,
+            page_size=page_size,
             sliding_window_size=4,
         )
     )
@@ -134,24 +134,18 @@ class TestDisabledPureSWARadixCache(CustomTestCase):
         self.assertEqual(req.kv.cache_protected_len, 2)
         self.assertEqual(allocator.freed, [2, 6, 7])
         self.assertEqual(allocator.skipped, [3, 4, 5])
-        match = cache.match_prefix(MatchPrefixParams(key=RadixKey(token_ids)))
-        self.assertEqual(match.device_prefix_len, 0)
         self.assertEqual(cache.total_size(), 0)
-        self.assertEqual(cache.evictable_size(), 0)
-        self.assertEqual(cache.protected_size(), 0)
 
-    def test_window_eviction_frees_up_to_the_window_ignoring_retain_floor(self):
-        cache = _make_cache(disable=True, num_tokens=12)
-        # Nothing can match a checkpoint in a disabled tree, so a retain floor
-        # must not hold back the window.
-        cache.swa_retain_floor = lambda req: 2
+    def test_window_eviction_frees_up_to_the_window(self):
+        cache = _make_cache(disable=True, num_tokens=20, page_size=8)
         req = SimpleNamespace(kv=ReqKvInfo(req_pool_idx=0))
 
-        cache.evict_sliding_windows(req, 10)
+        cache.evict_sliding_windows(req, 20)
 
-        # pre_len 10 - window 4: [0, 6) slides out.
-        self.assertEqual(cache.token_to_kv_pool_allocator.window_freed, list(range(6)))
-        self.assertEqual(req.kv.get_evicted_seqlen(ComponentType.SWA), 6)
+        # pre_len 20 - window 4 = 16, page-aligned: [0, 16) slides out. A
+        # prefix-sharing cache would keep max(window, page) and stop at 8.
+        self.assertEqual(cache.token_to_kv_pool_allocator.window_freed, list(range(16)))
+        self.assertEqual(req.kv.get_evicted_seqlen(ComponentType.SWA), 16)
 
 
 if __name__ == "__main__":

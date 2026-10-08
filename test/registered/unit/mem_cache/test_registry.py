@@ -202,11 +202,11 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
             ) as create_unified,
             patch(
                 "sglang.srt.mem_cache.pure_swa_radix_cache.PureSWARadixCache"
-            ) as PureSWA,
+            ) as PureSWARadixCache,
         ):
             result = default_radix_cache_factory(ctx)
         create_unified.assert_not_called()
-        self.assertIs(result, PureSWA.return_value)
+        self.assertIs(result, PureSWARadixCache.return_value)
 
     def test_mamba_with_disable_radix_routes_to_unified(self):
         ctx = _make_ctx(
