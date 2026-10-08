@@ -171,7 +171,7 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
             SWAChunkCache.assert_called_once_with(ctx.params)
             self.assertIs(result, SWAChunkCache.return_value)
 
-    def test_pure_swa_chunk_cache_when_chunked_prefill_disable_and_all_swa(self):
+    def test_pure_swa_radix_cache_when_chunked_prefill_disable_and_all_swa(self):
         ctx = _make_ctx(
             self,
             effective_chunked_prefill_size=512,
@@ -180,12 +180,12 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
             full_tokens_per_layer=0,
         )
         with patch(
-            "sglang.srt.mem_cache.chunk_cache.PureSWAChunkCache"
-        ) as PureSWAChunkCache:
-            PureSWAChunkCache.return_value = MagicMock()
+            "sglang.srt.mem_cache.pure_swa_radix_cache.PureSWARadixCache"
+        ) as PureSWA:
+            PureSWA.return_value = MagicMock()
             result = default_radix_cache_factory(ctx)
-            PureSWAChunkCache.assert_called_once_with(ctx.params)
-            self.assertIs(result, PureSWAChunkCache.return_value)
+            PureSWA.assert_called_once_with(params=ctx.params)
+            self.assertIs(result, PureSWA.return_value)
 
     def test_streaming_with_disable_radix_keeps_pure_swa_off_unified(self):
         ctx = _make_ctx(
@@ -201,12 +201,12 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
                 "sglang.srt.mem_cache.registry.create_unified_radix_cache"
             ) as create_unified,
             patch(
-                "sglang.srt.mem_cache.chunk_cache.PureSWAChunkCache"
-            ) as PureSWAChunkCache,
+                "sglang.srt.mem_cache.pure_swa_radix_cache.PureSWARadixCache"
+            ) as PureSWA,
         ):
             result = default_radix_cache_factory(ctx)
         create_unified.assert_not_called()
-        self.assertIs(result, PureSWAChunkCache.return_value)
+        self.assertIs(result, PureSWA.return_value)
 
     def test_mamba_with_disable_radix_routes_to_unified(self):
         ctx = _make_ctx(
