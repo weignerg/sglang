@@ -74,8 +74,9 @@ class SWAComponent(TreeComponent):
         )
         from sglang.srt.mem_cache.allocator.swa import SWATokenToKVPoolAllocator
 
-        # DeepSeek V4 HiSparse requires --disable-radix-cache; the disabled mode
-        # only uses the SWA allocator API it forwards.
+        # DeepSeek V4 HiSparse forces --disable-radix-cache, where this component
+        # only frees through free_swa_segment / free / free_group_*, which the
+        # HiSparse allocator defines.
         assert isinstance(
             params.token_to_kv_pool_allocator,
             (SWATokenToKVPoolAllocator, DeepSeekV4HiSparseTokenToKVPoolAllocator),

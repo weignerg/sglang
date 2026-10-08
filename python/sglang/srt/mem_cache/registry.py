@@ -82,7 +82,8 @@ def default_radix_cache_factory(ctx: TreeCacheBuildContext) -> BasePrefixCache:
     params = ctx.params
 
     is_pure_swa = ctx.is_hybrid_swa and ctx.full_tokens_per_layer == 0
-    # UnifiedRadixCache's disabled mode serves every layout but pure-SWA.
+    # The decode host-pool backup needs UnifiedRadixCache; otherwise its
+    # disabled mode serves every layout but pure-SWA.
     if ctx.disable_radix_cache and (
         get_disagg().disaggregation_decode_retraction_backup == "host_pool"
         or not is_pure_swa
