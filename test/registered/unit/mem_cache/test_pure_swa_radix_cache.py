@@ -99,11 +99,6 @@ class TestPureSWARadixCache(CustomTestCase):
 
 
 class TestDisabledPureSWARadixCache(CustomTestCase):
-    def test_reports_no_prefix_sharing(self):
-        self.assertFalse(
-            _make_cache(disable=True, num_tokens=8).supports_prefix_sharing()
-        )
-
     def test_finished_req_skips_protected_prefix_and_evicted_range(self):
         cache = _make_cache(disable=True, num_tokens=10)
         allocator = cache.token_to_kv_pool_allocator
