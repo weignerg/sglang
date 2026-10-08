@@ -181,11 +181,11 @@ class TestCreateTreeCacheRouting(_RegistryIsolationMixin, CustomTestCase):
         )
         with patch(
             "sglang.srt.mem_cache.pure_swa_radix_cache.PureSWARadixCache"
-        ) as PureSWA:
-            PureSWA.return_value = MagicMock()
+        ) as PureSWARadixCache:
+            PureSWARadixCache.return_value = MagicMock()
             result = default_radix_cache_factory(ctx)
-            PureSWA.assert_called_once_with(params=ctx.params)
-            self.assertIs(result, PureSWA.return_value)
+            PureSWARadixCache.assert_called_once_with(params=ctx.params)
+            self.assertIs(result, PureSWARadixCache.return_value)
 
     def test_streaming_with_disable_radix_keeps_pure_swa_off_unified(self):
         ctx = _make_ctx(
