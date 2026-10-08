@@ -262,8 +262,8 @@ def _kv_shard_rotation_bases(
       allocator draws from the least-full class at that request's turn (so
       the draw sees earlier requests' pops in the same batch) and resolves
       the entry in place.
-    - A radix-disabled cache has no tree nodes (``last_node`` is None or the
-      root, which carries no base); its chunked continuations fall back to
+    - A radix-disabled cache keeps no nodes past the root, which carries no
+      base; its chunked continuations fall back to
       the base recorded on the request at the previous chunk's alloc (no
       cross-request reuse, no rebind there).
     """

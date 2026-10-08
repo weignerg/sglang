@@ -98,8 +98,7 @@ export const KimiK3MambaRatioCalculator = () => {
     // the decode-lock skip, plus the ping-pong track buffer (2 under the overlap
     // scheduler, 1 for lazy or without overlap). no_buffer has no track buffer and
     // adds the skip's drop back, so it stays 3; a disabled radix cache is 1.
-    // A PD decode server disables the radix cache: one live slot per request, and the
-    // radix-strategy knobs are inert there.
+    // A PD decode server disables it too; the radix-strategy knobs are inert there.
     const slots = pdRole === "decode"
       ? 1
       : radixOff

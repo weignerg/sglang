@@ -170,6 +170,7 @@ class TestStashGatePreservesPrefix(CustomTestCase):
             s, running_batch=s.running_batch, last_batch=s.last_batch
         )
         self.assertIsNone(s.chunked_req)
+        cache.checkpoint.assert_not_called()
 
 
 if __name__ == "__main__":
